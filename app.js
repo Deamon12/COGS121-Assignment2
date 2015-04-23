@@ -25,6 +25,11 @@ var INSTAGRAM_CALLBACK_URL = process.env.INSTAGRAM_CALLBACK_URL;
 Instagram.set('client_id', INSTAGRAM_CLIENT_ID);
 Instagram.set('client_secret', INSTAGRAM_CLIENT_SECRET);
 
+var LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
+var LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+var LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+var LINKEDIN_CALLBACK_URL = process.env.LINKEDIN_CALLBACK_URL;
+
 //connect to database
 mongoose.connect(process.env.MONGODB_CONNECTION_URL);
 var db = mongoose.connection;
@@ -47,6 +52,79 @@ passport.serializeUser(function(user, done) {
 passport.deserializeUser(function(obj, done) {
   done(null, obj);
 });
+
+
+
+
+//LinkedIn
+
+
+
+passport.use(new LinkedInStrategy({
+  clientID: LINKEDIN_CLIENT_ID,
+  clientSecret: LINKEDIN_CLIENT_SECRET,
+  callbackURL: LINKEDIN_CALLBACK_URL,
+  scope: ['r_emailaddress', 'r_basicprofile', 'r_network']
+}, function(accessToken, refreshToken, profile, done) {
+
+      console.out("LinkedIn Profile: "+profile);
+
+  // asynchronous verification, for effect...
+  models.User.findOne({
+    "linkedin_id": profile.id
+  }, function(err, user) {
+    if (err) {
+      return done(err);
+    }
+
+    //didnt find a user
+    if (!user) {
+      newUser = new models.User({
+        name: profile.username,
+        ig_id: profile.id,
+        ig_access_token: accessToken
+      });
+
+      newUser.save(function(err) {
+        if(err) {
+          console.log(err);
+        } else {
+          console.log('user: ' + newUser.name + " created.");
+        }
+        return done(null, newUser);
+      });
+    } else {
+      //update user here
+      user.ig_access_token = accessToken;
+      user.save();
+      process.nextTick(function () {
+        // To keep the example simple, the user's Instagram profile is returned to
+        // represent the logged-in user.  In a typical application, you would want
+        // to associate the Instagram account with a user record in your database,
+        // and return that user instead.
+
+
+
+
+
+
+
+
+
+
+
+    return done(null, profile);
+      });
+    }
+  });
+    }
+));
+
+
+
+
+
+
 
 
 // Use the InstagramStrategy within Passport.
@@ -223,7 +301,29 @@ app.get('/visualization', ensureAuthenticatedInstagram, function (req, res){
 
 app.get('/c3visualization', ensureAuthenticatedInstagram, function (req, res){
   res.render('c3visualization');
-}); 
+});
+
+
+app.get('/auth/linkedin',
+    passport.authenticate('linkedin'),
+    function(req, res){
+      // The request will be redirected to LinkedIn for authentication, so this
+      // function will not be called.
+    });
+/*
+app.get('/auth/linkedin',
+    passport.authenticate('linkedin', { state: 'SOME STATE'  }),
+    function(req, res){
+      // The request will be redirected to LinkedIn for authentication, so this
+      // function will not be called.
+    });
+*/
+app.get('/auth/linkedin/callback', passport.authenticate('linkedin', {
+  successRedirect: '/',
+  failureRedirect: '/login' //TODO
+}));
+
+
 
 app.get('/auth/instagram',
   passport.authenticate('instagram'),
