@@ -85,6 +85,13 @@ sub {
 }
 img {
   border: 0;
+  display: block;
+    margin-left: auto;
+    margin-right: auto 
+}
+img.resize{
+   max-width:50%;
+   max-height:10%;
 }
 svg:not(:root) {
   overflow: hidden;
@@ -221,6 +228,7 @@ th {
   img {
     max-width: 100% !important;
   }
+  
   p,
   h2,
   h3 {
@@ -570,7 +578,7 @@ a.bg-danger:hover {
 ul,
 ol {
   margin-top: 0;
-  margin-bottom: 10px;
+  
 }
 ul ul,
 ol ul,
@@ -734,8 +742,8 @@ pre code {
   overflow-y: scroll;
 }
 .container {
-  padding-right: 15px;
-  padding-left: 15px;
+  padding-right: 0px;
+  padding-left: 0px;
   margin-right: auto;
   margin-left: auto;
 }
@@ -3584,6 +3592,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 }
 .nav-justified {
   width: 100%;
+  
 }
 .nav-justified > li {
   float: none;

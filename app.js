@@ -11,11 +11,13 @@ var dotenv = require('dotenv');
 var mongoose = require('mongoose');
 var Instagram = require('instagram-node-lib');
 var async = require('async');
+var EventEmitter = require("events").EventEmitter;
 var app = express();
 
 
 //local dependencies
 var models = require('./models');
+
 
 //client id and client secret here, taken from .env
 dotenv.load();
@@ -31,13 +33,35 @@ var LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 var LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 var LINKEDIN_CALLBACK_URL = process.env.LINKEDIN_CALLBACK_URL;
 
-var YoutubeStrategy = require('passport-youtube-v3').Strategy
+var YoutubeStrategy = require('passport-youtube-v3').Strategy;
 var YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID;
 var YOUTUBE_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET;
 var YOUTUBE_CALLBACK_URL = process.env.YOUTUBE_CALLBACK_URL;
 var Youtube = require("youtube-api");
 
 
+var TwitterStrategy = require('passport-twitter').Strategy;
+var TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
+var TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
+var TWITTER_CALLBACK_URL = process.env.TWITTER_CALLBACK_URL;
+var TWITTER_ACCESS_TOKEN = process.env.TWITTER_ACCESS_TOKEN;
+var TWITTER_ACCESS_SECRET = process.env.TWITTER_ACCESS_SECRET;
+var Twitter = require('twitter');
+var client = new Twitter({
+    consumer_key: TWITTER_CLIENT_ID,
+    consumer_secret: TWITTER_CLIENT_SECRET,
+    access_token_key: TWITTER_ACCESS_TOKEN,
+    access_token_secret: TWITTER_ACCESS_SECRET
+});
+
+var Twit = require('twit');
+
+var T = new Twit({
+    consumer_key: TWITTER_CLIENT_ID,
+    consumer_secret: TWITTER_CLIENT_SECRET,
+    access_token: TWITTER_ACCESS_TOKEN,
+    access_token_secret: TWITTER_ACCESS_SECRET
+});
 
 //connect to database
 mongoose.connect(process.env.MONGODB_CONNECTION_URL);
@@ -63,13 +87,6 @@ passport.deserializeUser(function(obj, done) {
 });
 
 
-app.get('/youtubetest',
-    passport.authenticate('bearer', { session: false }),
-    function(req, res) {
-        res.json(req.user);
-    });
-
-
 
 passport.use(new YoutubeStrategy({
         clientID: YOUTUBE_CLIENT_ID,
@@ -79,7 +96,7 @@ passport.use(new YoutubeStrategy({
     }, function (accessToken, refreshToken, profile, done) {
 
       //console.log(JSON.stringify(profile, undefined, 2))
-        console.log(profile);
+        //console.log(profile);
 
       // asynchronous verification, for effect...
       models.User.findOne({
@@ -108,7 +125,7 @@ passport.use(new YoutubeStrategy({
             return done(null, newUser);
           });
         } else {
-            console.log("user: "+user);
+          //console.log("user: "+user);
           //update user here
           console.log('user: ' + user.youtube_name + " updated.");
           user.youtube_access_token = accessToken;
@@ -185,7 +202,57 @@ passport.use(new LinkedInStrategy({
 ));
 
 
+passport.use(new TwitterStrategy({
+        consumerKey: TWITTER_CLIENT_ID,
+        consumerSecret: TWITTER_CLIENT_SECRET,
+        callbackURL: TWITTER_CALLBACK_URL
+    },
+    function(accessToken, refreshToken, profile, done) {
 
+        //console.log("twitter: "+JSON.stringify(profile, undefined, 2));
+        // asynchronous verification, for effect...
+        models.User.findOne({
+            "twitter_id": profile.id
+        }, function(err, user) {
+            if (err) {
+                return done(err);
+            }
+
+            //didnt find a user
+            if (!user) {
+                newUser = new models.User({
+                    twitter_name: profile.displayName,
+                    twitter_id: profile.id,
+                    provider: profile.provider,
+                    twitter_pic: profile.photos[0].value,
+                    twitter_access_token: accessToken
+                });
+
+                newUser.save(function(err) {
+                    if(err) {
+                        console.log(err);
+                    } else {
+                        console.log('user: ' + newUser.name + " created.");
+                    }
+                    return done(null, newUser);
+                });
+            } else {
+                //update user here
+                user.twitter_access_token = accessToken;
+                user.save();
+                process.nextTick(function () {
+                    // To keep the example simple, the user's Instagram profile is returned to
+                    // represent the logged-in user.  In a typical application, you would want
+                    // to associate the Instagram account with a user record in your database,
+                    // and return that user instead.
+                    return done(null, user);
+                });
+            }
+        });
+    }
+
+
+));
 
 
 
@@ -247,7 +314,9 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(session({ secret: 'keyboard cat',
                   saveUninitialized: true,
-                  resave: true}));
+                  resave: true,
+                  name: 'id'
+                  }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -268,7 +337,7 @@ function ensureAuthenticated(req, res, next) {
 
 function ensureAuthenticatedYoutube(req, res, next) {
     if (req.isAuthenticated() && !!req.user.youtube_id) {
-        console.log("Ensure Youtube auth, passed")
+        console.log("Ensure Youtube auth, passed");
         return next();
     }
     res.redirect('/login');
@@ -276,7 +345,7 @@ function ensureAuthenticatedYoutube(req, res, next) {
 
 function ensureAuthenticatedInstagram(req, res, next) {
   if (req.isAuthenticated() && !!req.user.ig_id) {
-    console.log("Ensure IG auth, passed")
+    console.log("Ensure IG auth, passed");
     return next(); 
   }
   res.redirect('/login');
@@ -284,10 +353,18 @@ function ensureAuthenticatedInstagram(req, res, next) {
 
 function ensureAuthenticatedLinkedin(req, res, next) {
   if (req.isAuthenticated() && !!req.user.linkedin_id) {
-    console.log("Ensure linkedin auth, passed")
+    console.log("Ensure linkedin auth, passed");
     return next();
   }
   res.redirect('/login');
+}
+
+function ensureAuthenticatedTwitter(req, res, next) {
+    if (req.isAuthenticated() && !!req.user.twitter_id) {
+        console.log("Ensure twitter auth, passed");
+        return next();
+    }
+    res.redirect('/login');
 }
 
 //routes
@@ -311,480 +388,743 @@ app.get('/accountlinkedin', ensureAuthenticated, function(req, res){
   res.render('accountlinkedin', {user: req.user});
 });
 
-
-
-// Call the Data API to retrieve the playlist ID that uniquely identifies the
-// list of videos uploaded to the currently authenticated user's channel.
-
-//https://gdata.youtube.com/feeds/api/users/yourdaddydm/uploads?v=2&alt=jsonc
-//https://www.googleapis.com/youtube/v3/channels?part=contentDetails&mine=true&key={YOUR_API_KEY}
-//https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&key={YOUR_API_KEY}
-
-
-
-/*
-plus.people.get({ userId: 'me', auth: oauth2Client }, function(err, response) {
-    // handle err and response
+app.get('/accounttwitter', ensureAuthenticated, function(req, res){
+    res.render('accounttwitter', {user: req.user});
 });
 
-plus.people.get({ auth: API_KEY, userId: '+google' }, function(err, user) {
-    console.log('Result: ' + (err ? err.message : user.displayName));
+
+app.get('/test', ensureAuthenticated, function(req, res){
+    //console.log("test");
+    console.log(global.company); // 'Google'
+    console.log(company);
 });
-*/
 
 
 
 
-app.get('/youtubelist', ensureAuthenticatedYoutube, function(req, res){
 
-    var query  = models.User.where({ youtube_id: req.user.youtube_id });
+//children[name,
+var jsonResult= {
+    "name": "Trending Tweets",
+    children: []
+};
+
+
+
+
+
+
+app.get('/twitterData', ensureAuthenticated, function(req, res){
+    var query  = models.User.where({ twitter_id: req.user.twitter_id });
     query.findOne(function (err, user) {
         if (err) return err;
+        if (user) {
 
 
-        Youtube.authenticate({
-            type: "oauth",
-            token: user.youtube_access_token
-        });
+            //Get local trends (trends/place) //woeId2487889
+            //Grab 100 tweets of each of the local trends (search/tweets)
 
-        var id_string = "";
-        var subscriptions = {
-            items: []
-        };
-        var uploadlistId_list = {
-            items: []
-        };
-        var upload_list = {
-            items: []
-        };
-
-        /*
-                function takes5Seconds(callback) {
-                    console.log('Starting 5 second task');
-                    setTimeout( function() {
-                        console.log('Just finshed 5 seconds');
-                        callback(null, 'five');
-                    }, 5000);
-                }
-                */
-/*
-        function takes2Seconds(callback) {
-            console.log('Starting 2 second task');
-            setTimeout( function() {
-                console.log('Just finshed 2 seconds');
-                callback(null, 'two');
-            }, 2000);
-        }
-*/
+            var localTrends = {
+                localTrends: {},
+                tweets: []
+            };
 
 
+            async.series([
+                getLocalTrends,
+                getAllTweetsFromLocalTrends,
+                sortTweets
+            ], function (err, results) {
 
-
-
-
-
-
-
-        async.series([
-            getSubscriptions,
-            buildIdString,
-            getUploadListIds,
-            getUserUploadInfosFinally
-        ], function (err, results) {
-            // Here, results is an array of the value from each function
-            console.log(results); // ['one', 'two']
-
-            //console.log("uploadlistId_list: " + JSON.stringify(uploadlistId_list, undefined, 2));
-            //console.log("upload_list: " + JSON.stringify(upload_list, undefined, 2));
-        });
-
-
-
-        function getSubscriptions(callback) {
-            Youtube.subscriptions.list({
-                "part": "snippet"
-                , "mine": true
-                //, "maxResults": 50
-            }, function (err, data) {
-                if (err)return err;
-                //console.log("Length: "+data.items.length);
-                for (var a = 0; a < data.items.length; a++) {
-                    //console.log(a+".) Sub: "+JSON.stringify(err || data.items[a], undefined, 2));
-                    subscriptions.items.push(data.items[a]);
-                }
-
-                callback(null, 'GetSubsDone');
-            })
-
-        }
-
-
-        function buildIdString(callback) {
-            for (var a = 0; a < subscriptions.items.length; a++) {
-
-                //console.log(a+".) Sub: "+JSON.stringify(err || subscriptions.items[a].snippet.title, undefined, 2));
-                if (a == 0) {
-                    id_string = subscriptions.items[a].snippet.resourceId.channelId;
-                } else
-                    id_string = id_string + ", " + subscriptions.items[a].snippet.resourceId.channelId;
-            }
-            callback(null, 'Id String Built: '+id_string);
-        }
-
-
-
-        //Use the list of subscriber accounts to retrieve the ID's
-        //for their uploads. Youtube stores upload lists with their own UploadID's
-        function getUploadListIds(callback) {
-
-
-            Youtube.channels.list({
-                "part": "contentDetails",
-                "id": id_string
-            }, function (err, data) {
-
-                //console.log("channel list data: " + JSON.stringify(err || data.items, undefined, 2));
-                //console.log();
-                /*
-                for(var a = 0; a < data.items.length;a++){
-                    //console.log(a+".) adding: "+JSON.stringify(err || data.items[a], undefined, 2));
-                    uploadlistId_list.items.push(data.items[a].contentDetails.relatedPlaylists.uploads);
-                }
-                */
-
-                async.each(data.items,
-                    // 2nd param is the function that each item is passed to
-                    function(item, callback){
-                        // Call an asynchronous function, often a save() to DB
-                       // item.someAsyncCall(function (){
-                            uploadlistId_list.items.push(item.contentDetails.relatedPlaylists.uploads);
-                            callback();
-                        //});
-                    },
-                    // 3rd param is the function to call when everything's done
-                    function(err){
-                        // All tasks are done now
-                        //doSomethingOnceAllAreDone();
-                        callback(null, 'List of upload IDs done '+uploadlistId_list.items);
-                    }
-                );
-
-
-
-/*
-
-                async.each(data.items, function(item, callback) {
-                    //console.log('Processing item ' + JSON.stringify(item, undefined, 2));
-                    uploadlistId_list.items.push(item.contentDetails.relatedPlaylists.uploads);
-                    callback();
-                });
-*/
-                //console.log("uploadlistId_list: "+JSON.stringify(uploadlistId_list, undefined, 2));
-
-                /*
-                //We now have the required ID's
-                //Call the id's to get the total number of uploads per users sub account
-                for(var a = 0; a < uploadlistId_list.items.length;a++) {
-                    //console.log("uploadlistId_list "+uploadlistId_list.items[a]);
-
-                    Youtube.playlistItems.list({
-                        "part": "snippet",
-                        "playlistId": uploadlistId_list.items[a]
-                        //"maxResults": 50
-                    }, function (err, data) {
-
-                        //console.log("playlist_data: " + JSON.stringify(data.pageInfo.totalResults, undefined, 2));
-                        //console.log();
-
-                        //res.render('youtube_uploads', {counts: data});
-                    });
-                }
-                */
-
-
+                //console.log(results);
+                //console.log("Globals after: " + JSON.stringify(localTrends, undefined, 2));
+                return res.json({data: jsonResult});
             });
 
-            //callback(null, 'List of upload IDs done '+uploadlistId_list.items);
-        }
 
 
-        function getUserUploadInfosFinally(callback){
 
-            console.log('getUserUploadInfosFinally');
+            function getLocalTrends(callback){
+                var sanDiegowoeid = "2487889";
+                client.get('trends/place', {id: sanDiegowoeid}, function (error, data, response) {
+                    if (!error) {
+                        localTrends.localTrends = data[0].trends;
+                    }
+                    if(data.errors){
+                        console.log("Error: " + JSON.stringify(data.errors[0].message, undefined, 2));
+                    }
+                    callback(null, 'Done - local hashes: ');
+                });
 
-            async.each(uploadlistId_list.items,
-                // 2nd param is the function that each item is passed to
-                function(item, callback){
-                    // Call an asynchronous function, often a save() to DB
-                    console.log('Processing item ' + JSON.stringify(item, undefined, 2));
-                    Youtube.playlistItems.list({
-                        "part": "snippet",
-                        "playlistId": item
-                        //"maxResults": 50
-                    }, function (err, data) {
 
-                        upload_list.items.push(data.pageInfo.totalResults);
+            }   //End method
+
+
+
+
+            function getAllTweetsFromLocalTrends(callback) {
+
+                async.eachLimit(localTrends.localTrends, 15, function(item, callback) {
+
+                    client.get('search/tweets', {q: item.query, count:25}, function (error, data, response) {
+                        if (!error) {
+                            data.hash = item.name;
+                            localTrends.tweets.push(data);
+                        }
+                        if(data.errors){
+                            console.log("Error: " + JSON.stringify(data.errors[0].message, undefined, 2));
+                        }
+                        //console.log("data: "+JSON.stringify(data, undefined, 2));
                         callback();
                     });
-                },
-                // 3rd param is the function to call when everything's done
-                function(err){
-                    // All tasks are done now
-                    //doSomethingOnceAllAreDone();
-                    callback(null, 'Got user upload objects: '+upload_list.items);
-                }
-            );
 
-
-
-/*
-
-            async.each(uploadlistId_list.items, function(item, callback) {
-
-                Youtube.playlistItems.list({
-                    "part": "snippet",
-                    "playlistId": item
-                    //"maxResults": 50
-                }, function (err, data) {
-                    upload_list.items.push(data.pageInfo.totalResults);
+                }, function(err){
+                    // if any of the file processing produced an error, err would equal that error
+                    if( err ) {
+                        // One of the iterations produced an error.
+                        // All processing will now stop.
+                        console.log('An item failed to process');
+                    } else {
+                        //console.log('All items have been processed successfully');
+                        console.log("localTrends.tweets.statuses[a]: " + JSON.stringify(localTrends.tweets.length, undefined, 2));
+                        callback(null, 'Done - Fetched Tweets:');
+                    }
                 });
-            });
-*/
+
+            }//endmethod
 
 
 
 
-            //callback(null, 'Got user upload objects: '+upload_list.items);
+            //Sort by Hashtag
+            //Sort by Location
+            //Sort by date
+
+            //Possible sorts, retweet_count, location, hashtag, posted date
+            function sortTweets(callback){
+
+                async.eachLimit(localTrends.tweets, 15, function(item, callback) {
+
+                    var hashTag = item.hash;
+                    console.log();
+                    //console.log("item hash: " + JSON.stringify(hashTag, undefined, 2));
+                    //Add a new child object for each hashtag
+                    var tempObj = {
+                        name: {},
+                        children: []
+                    };
+
+                    tempObj.name = hashTag;
+
+
+                    var location;
+                    var creation;
+                    var retweet;
+
+
+
+                    for(var a = 0, numItems = item.statuses.length; a < numItems; a++){
+                        location = item.statuses[a].user.location;
+                        creation = item.statuses[a].created_at;
+                        retweet = item.statuses[a].retweet_count;
+
+                        var tempJson = {"name": location, "size": (Math.random() * 10)};
+
+
+
+                        if (location != "") {
+                            var anotherTemp = {
+                                children: []
+                            };
+                            anotherTemp.children.push(tempJson)
+                            tempObj.children.push(anotherTemp);
+                        }
+                        else
+                            tempObj.children.push(tempJson);
+
+
+
+
+                    }
+                    jsonResult.children.push(tempObj);
+                    callback();
+
+
+                    //for (var a = 0; a < item.statuses.length; a++) {
+
+                        //console.log("item location: " + JSON.stringify(location, undefined, 2));
+                        //console.log("retweet: " + JSON.stringify(retweet, undefined, 2));
+                        //console.log("checking for : " + JSON.stringify(location, undefined, 2));
+
+                        /* for(var b = 0; a < item.statuses[a].entities.hashtags.length || a < 3; b++) {
+
+                         console.log("item: " + JSON.stringify(item.statuses[a].entities.hashtags[a].text, undefined, 2));
+
+                         }*/
+
+                    //}
+
+
+                }, function(err){
+
+                    if( err ) {
+                        console.log('An item failed to process');
+                    } else {
+                        //console.log('All items have been processed successfully');
+                        console.log("final Result: " + JSON.stringify(jsonResult, undefined, 2));
+                        callback(null, 'Done - Sorting Tweets:');
+                    }
+                });
+
+
+            }
+
+
+
+
+
         }
-
-
-
-/*
-
-        Youtube.subscriptions.list({
-                "part": "snippet"
-                , "mine": true
-                //, "maxResults": 50
-            }, function (err, data) {
-                if(err)return err;
-                //console.log("Length: "+data.items.length);
-                for(var a = 0; a < data.items.length;a++){
-                    //console.log(a+".) Sub: "+JSON.stringify(err || data.items[a], undefined, 2));
-                    subscriptions.items.push(data.items[a]);
-                }
-
-                //console.log("subscription[0]: "+JSON.stringify(subscriptions.items[0], undefined, 2));
-                //console.log("channel Id[0]: "+JSON.stringify(subscriptions.items[0].snippet.resourceId.channelId, undefined, 2));
-
-
-                //Create Comma separated string of ID's
-
-                for(var a = 0; a < subscriptions.items.length; a++){
-
-                    //console.log(a+".) Sub: "+JSON.stringify(err || subscriptions.items[a].snippet.title, undefined, 2));
-                    if(a == 0){
-                        id_string = subscriptions.items[a].snippet.resourceId.channelId;
-                    }else
-                        id_string = id_string+", "+subscriptions.items[a].snippet.resourceId.channelId;
-
-                }
-
-                //Get ids of the users subscribed channels
-                //Need the ID of the channels to get the id of user uploads list
-
-                Youtube.channels.list({
-                    "part": "contentDetails",
-                    "id": id_string
-                    //"maxResults": 50
-                }, function (err, data) {
-
-                    //console.log("channel list data: " + JSON.stringify(err || data.items, undefined, 2));
-                    //console.log();
-                    for(var a = 0; a < data.items.length;a++){
-                        //console.log(a+".) adding: "+JSON.stringify(err || data.items[a], undefined, 2));
-                        uploadlistId_list.items.push(data.items[a].contentDetails.relatedPlaylists.uploads);
-                    }
-
-
-                    //console.log("uploadlistId_list: "+JSON.stringify(uploadlistId_list, undefined, 2));
-                    //We now have the required ID's
-                    //Call the id's to get the total number of uploads per users sub account
-                    for(var a = 0; a < uploadlistId_list.items.length;a++) {
-                        //console.log("uploadlistId_list "+uploadlistId_list.items[a]);
-
-                         Youtube.playlistItems.list({
-                         "part": "snippet",
-                         "playlistId": uploadlistId_list.items[a]
-                         //"maxResults": 50
-                         }, function (err, data) {
-
-                             upload_list.items.push(data.pageInfo.totalResults);
-                             //console.log("data: " + JSON.stringify(data.pageInfo.totalResults, undefined, 2));
-                             //console.log("upload_list: " + JSON.stringify(upload_list.items[--a], undefined, 2));   //Correct
-                             //console.log();
-
-                             //res.render('youtube_uploads', {counts: data});
-                         });
-                    }
-                });
-
-            });
-
-
-
-
-*/
-
-
-
 
     });
 
 
-
 });
 
+/*
+//Use Woeids to get global tweets.
+function getTrendsbyLocationId(callback) {
+
+
+    async.each(trendingLocations, function (item, callback) {
+
+        // Perform operation on file here.
+        console.log('Processing file ' + JSON.stringify(item.woeid, undefined, 2));
+
+        client.get('trends/place', {id: item.woeid}, function (error, data, response) {
+            if (!error) {
+                console.log(item.woeid + ": " + JSON.stringify(data, undefined, 2));
+                console.log(JSON.stringify(data, undefined, 2));
+                //trendingHashtags.items.push(data);
+                //localTrends[0].trends.posts.push(data)
+                callback();
+            }
+        });
 
 
 
-app.get('/igphotos', ensureAuthenticatedInstagram, function(req, res){
-  var query  = models.User.where({ ig_id: req.user.ig_id });
-  query.findOne(function (err, user) {
-    if (err) return err;
-    if (user) {
-      // doc may be null if no document matched
-      Instagram.users.liked_by_self({
-        access_token: user.ig_access_token,
-        complete: function(data) {
-          console.log(data);
-          //Map will iterate through the returned data obj
-          var imageArr = data.map(function(item) {
-            //create temporary json object
-            tempJSON = {};
-            tempJSON.url = item.images.low_resolution.url;
-            //insert json object into image array
-            return tempJSON;
-          });
-          res.render('photos', {photos: imageArr});
+
+        }, function (err) {
+        // if any of the file processing produced an error, err would equal that error
+        if (err) {
+        console.log('An item failed to process');
+        } else {
+        console.log('All items have been processed successfully');
         }
-      }); 
-    }
-  });
-});
+        });
 
-app.get('/igMediaCounts', ensureAuthenticatedInstagram, function(req, res){
-  var query  = models.User.where({ ig_id: req.user.ig_id });
-  query.findOne(function (err, user) {
-    if (err) return err;
-    if (user) {
-      Instagram.users.follows({ //get followers
-        user_id: user.ig_id,
-        access_token: user.ig_access_token,
-        complete: function(data) {
-          // an array of asynchronous functions
-          var asyncTasks = [];
-          var mediaCounts = [];
-           
-          data.forEach(function(item){
-            asyncTasks.push(function(callback){
-              // asynchronous function!
-              Instagram.users.info({ 
-                  user_id: item.id,
-                  access_token: user.ig_access_token,
-                  complete: function(data) {
-                    mediaCounts.push(data);
-                    callback();
-                  }
-                });            
+
+        }
+        */
+            /*
+             async.eachSeries(trendingLocations, item, function(err) {
+
+             console.log("item: "+item);
+
+
+
+
+
+             });
+
+
+             callback(null, 'Done getting global trends');
+
+
+             }
+
+
+
+             /*
+             // if(item.woeid != 1) {
+
+             client.get('trends/place', params, function(error, data, response){
+             if (!error) {
+             //console.log("a tweet: "+tweets);
+             console.log(JSON.stringify(data, undefined, 2));
+             //trendingHashtags.items.push(data);
+             //localTrends[0].trends.posts.push(data)
+             }
+
+             });
+
+
+
+             */
+            /*
+             client.get('trends/place', params, function (err, data, response) {
+             //console.log("response: "+JSON.stringify(response, undefined, 2));
+             //console.log(item.woeid+": "+JSON.stringify(data, undefined, 2));
+             globalHashtags.places.push(data);
+
+
+             });*/
+            //}
+
+
+            /*
+             T.get('search/tweets', { q: 'banana', since:'2011-11-11', count: 100 }, function(err, data, response) {
+             console.log(data)
+             })*/
+            /*
+             T.get('followers/ids', { screen_name: 'tolga_tezel' },  function (err, data, response) {
+             console.log(data)
+             })
+             */
+
+            /*
+             T.get('trends/place', { id: '2487889' },  function (err, data, response) {
+             for(var a = 0 ; a < data[0].trends;a++){
+             jsonResult.children[a] = data[0].trends[a];
+             }
+             console.log(JSON.stringify(jsonResult, undefined, 2));
+             })*/
+            /*
+             //var stream = T.stream('statuses/filter', { track: ['bananas', 'oranges', 'strawberries'] })
+             var stream = T.stream('statuses/filter', { locations: soCal, language: 'en'  });
+             stream.on('tweet', function (tweet) {
+             console.log(tweet.text);
+             //return res.json({tweet: tweet});
+             });
+             */
+            /*
+             function getRateLimitStatus(callback) {
+             //var sanDiegowoeid = "2487889";
+             var params = {};
+             //application / rate_limit_status
+             client.get('application/rate_limit_status', params, function(error, data, response){
+             if (err)return err;
+
+             //console.log(data);
+             //console.log(JSON.stringify(localTrends, undefined, 2));
+             callback(null, 'Status: '+data);
+             });
+
+             }
+             */
+
+
+        app.get('/twitterStream', ensureAuthenticated, function (req, res) {
+            var query = models.User.where({twitter_id: req.user.twitter_id});
+            query.findOne(function (err, user) {
+                if (err) return err;
+                if (user) {
+
+
+
+                    /*
+                     ee.on("someEvent", function () {
+                     console.log("event has occured");
+                     });
+                     */
+
+
+                    var localTrends = {};
+                    var trendingHashtags = {
+                        items: []
+                    };
+
+
+                    /*
+                     T.get('search/tweets', { q: 'banana', since:'2011-11-11', count: 100 }, function(err, data, response) {
+                     console.log(data)
+                     })*/
+                    /*
+                     T.get('followers/ids', { screen_name: 'tolga_tezel' },  function (err, data, response) {
+                     console.log(data)
+                     })
+                     */
+
+
+                    var sanFrancisco = [-122.75, 36.8, -121.75, 37.8];
+                    var ucsd = [-117.3800415993, 32.7195620813, -117.0516662598, 32.9079761123]; //woeid: 2487889
+                    var sanDiego = [-117.4260468483, 32.4965256796, -116.8669586182, 33.3132218581];
+                    var soCal = [-119.247030735, 32.4965256796, -116.8669586182, 34.4238109325];
+                    var newYork = [-74, 40, -73, 41];
+
+                    /*
+                     T.get('trends/place', { id: '2487889' },  function (err, data, response) {
+                     for(var a = 0 ; a < data[0].trends;a++){
+                     jsonResult.children[a] = data[0].trends[a];
+                     }
+                     console.log(JSON.stringify(jsonResult, undefined, 2));
+                     })
+                     */
+
+
+                    //var stream = T.stream('statuses/filter', { track: ['bananas', 'oranges', 'strawberries'] })
+                    var stream = T.stream('statuses/filter', {locations: sanDiego, language: 'en'});
+                    stream.on('tweet', function (tweet) {
+                        console.log(tweet.place.name + " : " + tweet.text);
+
+                        //ee.emit("someEvent");
+                        //return re    s.json({tweet: tweet});
+
+
+                    });
+
+
+                    /**
+                     *
+                     *
+                     * { created_at: 'Thu Apr 30 01:50:27 +0000 2015',
+                id: 593593223299338200,
+                id_str: '593593223299338242',
+                text: 'Chaisin\' Tail at @theuglydogpubsd tonight!! 😺 come on down and session up with buckets of beer and… https://t.co/85BYHfLPj5',
+                     source: '<a href="http://instagram.com" rel="nofollow">Instagram</a>',
+                     truncated: false,
+                     in_reply_to_status_id: null,
+                     in_reply_to_status_id_str: null,
+                     in_reply_to_user_id: null,
+                     in_reply_to_user_id_str: null,
+                     in_reply_to_screen_name: null,
+                     user:
+                     { id: 1027143907,
+                       id_str: '1027143907',
+                       name: 'The Fat Cat Beer Co.',
+                       screen_name: 'TheFatCatBeerCo',
+                       location: 'GA, DC, VA, FL & CA',
+                       url: 'http://www.fatcatbeers.com',
+                       description: 'The Original!!! Craft Beer In A Can Since 1995! SESSION UP!™',
+                       protected: false,
+                       verified: false,
+                       followers_count: 403,
+                       friends_count: 393,
+                       listed_count: 13,
+                       favourites_count: 192,
+                       statuses_count: 629,
+                       created_at: 'Fri Dec 21 20:52:49 +0000 2012',
+                       utc_offset: -25200,
+                       time_zone: 'Arizona',
+                       geo_enabled: true,
+                       lang: 'en',
+                       contributors_enabled: false,
+                       is_translator: false,
+                       profile_background_color: '131516',
+                       profile_background_image_url: 'http://abs.twimg.com/images/themes/theme14/bg.gif',
+                       profile_background_image_url_https: 'https://abs.twimg.com/images/themes/theme14/bg.gif',
+                       profile_background_tile: true,
+                       profile_link_color: '009999',
+                       profile_sidebar_border_color: 'EEEEEE',
+                       profile_sidebar_fill_color: 'EFEFEF',
+                       profile_text_color: '333333',
+                       profile_use_background_image: true,
+                       profile_image_url: 'http://pbs.twimg.com/profile_images/444274159690858496/o5mPkbRU_normal.png',
+                       profile_image_url_https: 'https://pbs.twimg.com/profile_images/444274159690858496/o5mPkbRU_normal.png',
+                       profile_banner_url: 'https://pbs.twimg.com/profile_banners/1027143907/1418135970',
+                       default_profile: false,
+                       default_profile_image: false,
+                       following: null,
+                       follow_request_sent: null,
+                       notifications: null },
+                     geo: { type: 'Point', coordinates: [ 32.764385, -117.062255 ] },
+                     coordinates: { type: 'Point', coordinates: [ -117.062255, 32.764385 ] },
+                     place:
+                     { id: 'a592bd6ceb1319f7',
+                       url: 'https://api.twitter.com/1.1/geo/id/a592bd6ceb1319f7.json',
+                       place_type: 'city',
+                       name: 'San Diego',
+                       full_name: 'San Diego, CA',
+                       country_code: 'US',
+                       country: 'United States',
+                       bounding_box: { type: 'Polygon', coordinates: [Object] },
+                       attributes: {} },
+                     contributors: null,
+                     retweet_count: 0,
+                     favorite_count: 0,
+                     entities:
+                     { hashtags: [],
+                       trends: [],
+                       urls: [ [Object] ],
+                       user_mentions: [ [Object] ],
+                       symbols: [] },
+                     favorited: false,
+                     retweeted: false,
+                     possibly_sensitive: false,
+                     filter_level: 'low',
+                     lang: 'en',
+                     timestamp_ms: '1430358627520' }
+                     *
+                     *
+                     *
+                     *
+                     *
+                     */
+
+
+                }
             });
-          });
-          
-          // Now we have an array of functions, each containing an async task
-          // Execute all async tasks in the asyncTasks array
-          async.parallel(asyncTasks, function(err){
-            // All tasks are done now
-            if (err) return err;
-            return res.json({users: mediaCounts});        
-          });
-        }
-      });   
-    }
-  });
-});
+        });
 
 
+        /**
+         * Get Youtube info
+         */
+        app.get('/youtubeSubInfo', ensureAuthenticatedYoutube, function (req, res) {
 
+            var query = models.User.where({youtube_id: req.user.youtube_id});
+            query.findOne(function (err, user) {
+                if (err) return err;
+
+
+                Youtube.authenticate({
+                    type: "oauth",
+                    token: user.youtube_access_token
+                });
+
+                var id_string = "";
+                var subscriptions = {
+                    items: []
+                };
+                var uploadlistId_list = {
+                    items: []
+                };
+                var stats_list = {
+                    items: []
+                };
+
+
+                async.series([
+                    getSubscriptions,
+                    buildIdString,
+                    getUploadListIds
+                    //getUserUploadInfosFinally
+                ], function (err, results) {
+
+                    console.log(results);
+                    //Add counts to sub JSON
+                    //console.log("upload_list: " + JSON.stringify(upload_list, undefined, 2));
+                    for (var a = 0; a < stats_list.items.length; a++) {
+                        subscriptions.items[a].stats = stats_list.items[a];
+                        //console.log("ITEM: " + JSON.stringify(subscriptions.items[a], undefined, 2));
+                    }
+
+                    return res.json({users: subscriptions});
+
+                });
+
+
+                function getSubscriptions(callback) {
+                    Youtube.subscriptions.list({
+                        "part": "snippet"
+                        , "mine": true
+                        //, "maxResults": 50
+                    }, function (err, data) {
+                        if (err)return err;
+                        //console.log("Length: "+data.items.length);
+                        for (var a = 0; a < data.items.length; a++) {
+                            //console.log(a+".) Sub: "+JSON.stringify(err || data.items[a], undefined, 2));
+                            subscriptions.items.push(data.items[a]);
+                        }
+
+                        callback(null, 'GetSubsDone');
+                    })
+
+                }
+
+
+                function buildIdString(callback) {
+                    for (var a = 0; a < subscriptions.items.length; a++) {
+
+                        //console.log(subscriptions.items[a].snippet.title+".) "+JSON.stringify(subscriptions.items[a], undefined, 2));
+                        if (a == 0) {
+                            id_string = subscriptions.items[a].snippet.resourceId.channelId;
+                        } else
+                            id_string = id_string + ", " + subscriptions.items[a].snippet.resourceId.channelId;
+                    }
+                    callback(null, 'Id String Built: ' + id_string);
+                }
+
+
+                //Use the list of subscriber accounts to retrieve the ID's
+                //for their uploads. Youtube stores upload lists with their own UploadID's
+                function getUploadListIds(callback) {
+
+                    Youtube.channels.list({
+                        "part": "statistics",
+                        "id": id_string
+                    }, function (err, data) {
+
+                        async.each(data.items,
+                            function (item, callback) {
+                                //console.log("item: "+JSON.stringify(item, undefined, 2));
+                                //stats_list.items.push(item.contentDetails.relatedPlaylists.uploads);
+                                stats_list.items.push(item);
+                                callback();
+                            },
+                            // 3rd param is the function to call when everything's done
+                            function (err) {
+                                callback(null, 'List of upload IDs done ' + uploadlistId_list.items);
+                            }
+                        );
+                    });
+                    //callback(null, 'List of upload IDs done '+uploadlistId_list.items);
+                }
+
+            });
+
+
+        });
+
+
+        app.get('/igphotos', ensureAuthenticatedInstagram, function (req, res) {
+            var query = models.User.where({ig_id: req.user.ig_id});
+            query.findOne(function (err, user) {
+                if (err) return err;
+                if (user) {
+                    // doc may be null if no document matched
+                    Instagram.users.liked_by_self({
+                        access_token: user.ig_access_token,
+                        complete: function (data) {
+                            console.log(data);
+                            //Map will iterate through the returned data obj
+                            var imageArr = data.map(function (item) {
+                                //create temporary json object
+                                tempJSON = {};
+                                tempJSON.url = item.images.low_resolution.url;
+                                //insert json object into image array
+                                return tempJSON;
+                            });
+                            res.render('photos', {photos: imageArr});
+                        }
+                    });
+                }
+            });
+        });
+
+        app.get('/igMediaCounts', ensureAuthenticatedInstagram, function (req, res) {
+            var query = models.User.where({ig_id: req.user.ig_id});
+            query.findOne(function (err, user) {
+                if (err) return err;
+                if (user) {
+                    Instagram.users.follows({ //get followers
+                        user_id: user.ig_id,
+                        access_token: user.ig_access_token,
+                        complete: function (data) {
+                            // an array of asynchronous functions
+                            var asyncTasks = [];
+                            var mediaCounts = [];
+
+                            data.forEach(function (item) {
+                                asyncTasks.push(function (callback) {
+                                    // asynchronous function!
+                                    Instagram.users.info({
+                                        user_id: item.id,
+                                        access_token: user.ig_access_token,
+                                        complete: function (data) {
+                                            mediaCounts.push(data);
+                                            callback();
+                                        }
+                                    });
+                                });
+                            });
+
+                            // Now we have an array of functions, each containing an async task
+                            // Execute all async tasks in the asyncTasks array
+                            async.parallel(asyncTasks, function (err) {
+                                // All tasks are done now
+                                if (err) return err;
+                                return res.json({users: mediaCounts});
+                            });
+                        }
+                    });
+                }
+            });
+        });
 
 
 //Called after logged in, redirects to effect pages
-app.get('/visualization', ensureAuthenticated, function (req, res){
-  res.render('visualization');
-});
+        app.get('/visualization', ensureAuthenticated, function (req, res) {
+            res.render('visualization');
+        });
 //Called after logged in, redirects to effect pages
-app.get('/c3visualization', ensureAuthenticated, function (req, res){
-  res.render('c3visualization');
-});
+        app.get('/c3visualization', ensureAuthenticated, function (req, res) {
+            res.render('c3visualization');
+        });
 
 ////////linkedin
-app.get('/visualization_linkedin', ensureAuthenticated, function (req, res){
-  res.render('visualization_linkedin');
-});
-app.get('/c3visualization_linkedin', ensureAuthenticated, function (req, res){
-  res.render('c3visualization_linkedin');
-});
+        app.get('/visualization_linkedin', ensureAuthenticated, function (req, res) {
+            res.render('visualization_linkedin');
+        });
+        app.get('/c3visualization_linkedin', ensureAuthenticated, function (req, res) {
+            res.render('c3visualization_linkedin');
+        });
 
 /////YouTube
-app.get('/visualization_youtube', ensureAuthenticated, function (req, res){
-    res.render('visualization_youtube');
-});
-app.get('/c3visualization_youtube', ensureAuthenticated, function (req, res){
-    res.render('c3visualization_youtube');
-});
+        app.get('/visualization_youtube', ensureAuthenticated, function (req, res) {
+            res.render('visualization_youtube');
+        });
+        app.get('/c3visualization_youtube', ensureAuthenticated, function (req, res) {
+            res.render('c3visualization_youtube');
+        });
 
+/////Twitter
+        app.get('/visualization_twitter', ensureAuthenticated, function (req, res) {
+            res.render('visualization_twitter');
+        });
 
 
 //Youtube
-app.get('/auth/youtube/callback',
-    passport.authenticate('youtube', { failureRedirect: '/login'}),
-    function(req, res) {
-        res.redirect('/accountyoutube');
-    });
-app.get('/auth/youtube',
-    passport.authenticate('youtube'),
-    function(req, res){
-    });
+        app.get('/auth/youtube/callback',
+            passport.authenticate('youtube', {failureRedirect: '/login'}),
+            function (req, res) {
+                res.redirect('/accountyoutube');
+            });
+        app.get('/auth/youtube',
+            passport.authenticate('youtube'),
+            function (req, res) {
+            });
 
 
 //Linkedin
-app.get('/auth/linkedin',
-    passport.authenticate('linkedin', { state: 'SOME STATE' }),
-    function(req, res){
-    });
-app.get('/auth/linkedin/callback',
-    passport.authenticate('linkedin', { failureRedirect: '/login'}),
-    function(req, res) {
-        res.redirect('/accountlinkedin');
-    });
+        app.get('/auth/linkedin',
+            passport.authenticate('linkedin', {state: 'SOME STATE'}),
+            function (req, res) {
+            });
+        app.get('/auth/linkedin/callback',
+            passport.authenticate('linkedin', {failureRedirect: '/login'}),
+            function (req, res) {
+                res.redirect('/accountlinkedin');
+            });
 
 
 //IG
-app.get('/auth/instagram',
-  passport.authenticate('instagram'),
-  function(req, res){
-    // The request will be redirected to Instagram for authentication, so this
-    // function will not be called.
-  });
-app.get('/auth/instagram/callback', 
-  passport.authenticate('instagram', { failureRedirect: '/login'}),
-  function(req, res) {
-    res.redirect('/accountinstagram');
-  });
+        app.get('/auth/instagram',
+            passport.authenticate('instagram'),
+            function (req, res) {
+                // The request will be redirected to Instagram for authentication, so this
+                // function will not be called.
+            });
+        app.get('/auth/instagram/callback',
+            passport.authenticate('instagram', {failureRedirect: '/login'}),
+            function (req, res) {
+                res.redirect('/accountinstagram');
+            });
 
-app.get('/logout', function(req, res){
-  req.logout();
-  res.redirect('/');
-});
 
-http.createServer(app).listen(app.get('port'), function() {
-    console.log('Express server listening on port ' + app.get('port'));
-});
+        app.get('/auth/twitter', passport.authenticate('twitter'));
+        app.get('/auth/twitter/callback',
+            passport.authenticate('twitter', {
+                successRedirect: '/accounttwitter',
+                failureRedirect: '/login'
+            }));
+
+
+        app.get('/logout', function (req, res) {
+            //req.logout();
+            //passport.req.logout();
+            res.redirect('/login');
+        });
+
+        http.createServer(app).listen(app.get('port'), function () {
+            console.log('Express server listening on port ' + app.get('port'));
+        });

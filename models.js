@@ -10,6 +10,13 @@ var userSchema = mongoose.Schema({
 });
 */
 
+
+var tweetSchema = mongoose.Schema({
+	"user_name" : { type: String },
+	"city" : { type: String},
+	"country" : { type: String }
+});
+
 var userSchema = mongoose.Schema({
 	// IG
 	"ig_name" : { type: String },
@@ -25,6 +32,14 @@ var userSchema = mongoose.Schema({
 	"youtube_name" : { type: String},
 	"youtube_id" : { type: String},
 	"youtube_access_token" : { type: String },
+
+	//twitter
+	"twitter_name" : { type: String},
+	"twitter_id" : { type: String},
+	"twitter_access_token" : { type: String },
+	"twitter_pic" : { type: String },
+	"twitter_location" : { type: String },
+
 
 
 	"provider" : { type: String }

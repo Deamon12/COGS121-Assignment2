@@ -1,0 +1,393 @@
+
+
+<head>
+    <title>Deagan Monahan - COGS121</title>
+
+    <link rel="stylesheet" type="text/css" href="css/component.css" />
+
+
+    <link rel="stylesheet" type="text/css" href="css/deagan.css" />
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:700,300,300italic' rel='stylesheet' type='text/css' />
+
+
+</head>
+
+
+
+<body>
+<div class="container">
+
+    <!-- Top bar -->
+    <div class="codrops-top">
+
+		<span class="left">
+			<a>Deagan Monahan</a>
+		    <a><strong></strong></a>
+		</span>
+        <div class="clr"></div>
+    </div>
+    <!--/ Top bar -->
+
+    <header>
+        <h1><span>Twitter</span> D3 visualization </h1>
+        <br>
+        <nav class="codrops-demos">
+            <a href="/twitterStream">Twitter Stream</a>
+
+            <a href="/visualization_twitter">D3 visualization</a>
+            <br><br>
+            <a href="/logout">Logout </a>
+        </nav>
+    </header>
+
+</div>
+
+
+
+
+<div class="container demo-1">
+    <br><br>
+    <ul class="grid cs-style-1">
+        <li>
+
+            <div id="chart"></div>
+            <script src="js/visualization_twitter.js"></script>
+
+
+        </li>
+
+    </ul>
+
+
+
+
+</div>
+
+</body>
+
+
+
+
+
+<!--
+<script src="http://d3js.org/d3.v3.min.js"></script>
+-->
+
+
+<!--
+<script>
+
+
+    var w = 1280,
+            h = 800,
+            r = 720,
+            x = d3.scale.linear().range([0, r]),
+            y = d3.scale.linear().range([0, r]),
+            node,
+            root;
+
+    var pack = d3.layout.pack()
+            .size([r, r])
+            .value(function (d) {
+                return d.size;
+            })
+
+    var vis = d3.select("body").insert("svg:svg", "h2")
+            .attr("width", w)
+            .attr("height", h)
+            .append("svg:g")
+            .attr("transform", "translate(" + (w - r) / 2 + "," + (h - r) / 2 + ")");
+
+    d3.json("/igMedia", function (data) {
+    //d3.json("flare.json", function (data) {
+        node = root = data;
+
+        var nodes = pack.nodes(root);
+
+        vis.selectAll("circle")
+                .data(nodes)
+                .enter().append("svg:circle")
+                .attr("class", function(d) { return d.children ? "parent" : "child"; })
+                .attr("cx", function(d) { return d.x; })
+                .attr("cy", function(d) { return d.y; })
+                .attr("r", function(d) { return d.r; })
+                .on("click", function(d) { return zoom(node == d ? root : d); });
+
+        vis.selectAll("text")
+                .data(nodes)
+                .enter().append("svg:text")
+                .attr("class", function(d) { return d.children ? "parent" : "child"; })
+                .attr("x", function(d) { return d.x; })
+                .attr("y", function(d) { return d.y; })
+                .attr("dy", ".35em")
+                .attr("text-anchor", "middle")
+                .style("opacity", function(d) { return d.r > 20 ? 1 : 0; })
+                .text(function(d) { return d.name; });
+
+        d3.select(window).on("click", function() { zoom(root); });
+    });
+
+    function zoom(d, i) {
+        var k = r / d.r / 2;
+        x.domain([d.x - d.r, d.x + d.r]);
+        y.domain([d.y - d.r, d.y + d.r]);
+
+        var t = vis.transition()
+                .duration(d3.event.altKey ? 7500 : 750);
+
+        t.selectAll("circle")
+                .attr("cx", function(d) { return x(d.x); })
+                .attr("cy", function(d) { return y(d.y); })
+                .attr("r", function(d) { return k * d.r; });
+
+        t.selectAll("text")
+                .attr("x", function(d) { return x(d.x); })
+                .attr("y", function(d) { return y(d.y); })
+                .style("opacity", function(d) { return k * d.r > 20 ? 1 : 0; });
+
+        node = d;
+        d3.event.stopPropagation();
+    }
+
+
+
+</script>
+-->
+<!--
+
+<script type="text/javascript" src="http://d3js.org/d3.v2.js"></script>
+<style type="text/css">
+.link { stroke: #ccc; }
+.nodetext { pointer-events: none; font: 10px sans-serif; }
+</style>
+</head>
+<body>
+<h3><a href="http://stackoverflow.com/questions/10899725/d3-js-force-directed-graph-with-support-for-drag-and-drop-to-make-selected-node">http://stackoverflow.com/questions/10899725/d3-js-force-directed-graph-with-support-for-drag-and-drop-to-make-selected-node</a></h3>
+<script type="text/javascript">
+
+var w = 960,
+    h = 500
+
+var vis = d3.select("body").append("svg:svg")
+    .attr("width", w)
+    .attr("height", h);
+
+d3.json("graph.json", function(json) {
+    var force = self.force = d3.layout.force()
+        .nodes(json.nodes)
+        .links(json.links)
+        .gravity(.05)
+        .distance(100)
+        .charge(-100)
+        .size([w, h])
+        .start();
+
+    var link = vis.selectAll("line.link")
+        .data(json.links)
+        .enter().append("svg:line")
+        .attr("class", "link")
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    var node_drag = d3.behavior.drag()
+        .on("dragstart", dragstart)
+        .on("drag", dragmove)
+        .on("dragend", dragend);
+
+    function dragstart(d, i) {
+        force.stop() // stops the force auto positioning before you start dragging
+    }
+
+    function dragmove(d, i) {
+        d.px += d3.event.dx;
+        d.py += d3.event.dy;
+        d.x += d3.event.dx;
+        d.y += d3.event.dy;
+        tick(); // this is the key to make it work together with updating both px,py,x,y on d !
+    }
+
+    function dragend(d, i) {
+        d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
+        tick();
+        force.resume();
+    }
+
+
+    var node = vis.selectAll("g.node")
+        .data(json.nodes)
+      .enter().append("svg:g")
+        .attr("class", "node")
+        .call(node_drag);
+
+    node.append("svg:image")
+        .attr("class", "circle")
+        .attr("xlink:href", "https://github.com/favicon.ico")
+        .attr("x", "-8px")
+        .attr("y", "-8px")
+        .attr("width", "16px")
+        .attr("height", "16px");
+
+    node.append("svg:text")
+        .attr("class", "nodetext")
+        .attr("dx", 12)
+        .attr("dy", ".35em")
+        .text(function(d) { return d.name });
+
+    force.on("tick", tick);
+
+    function tick() {
+      link.attr("x1", function(d) { return d.source.x; })
+          .attr("y1", function(d) { return d.source.y; })
+          .attr("x2", function(d) { return d.target.x; })
+          .attr("y2", function(d) { return d.target.y; });
+
+      node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+    };
+
+
+});
+
+</script>
+
+
+
+
+-->
+
+<!--
+<script type='application/javascript' src='js/../../app.js'></script>
+
+
+
+
+
+<script type='text/javascript' src="app.js"/>
+    var someVar = req.app.locals.someVar;
+</script>
+
+
+<script type='text/javascript' src='../../app.js'></script>
+
+
+
+
+-->
+
+<!--
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+    console.log(someVar);
+
+    JSONData = [
+        { "id": 3, "created_at": "Sun May 05 2013", "amount": 12000},
+        { "id": 1, "created_at": "Mon May 13 2013", "amount": 2000},
+        { "id": 2, "created_at": "Thu Jun 06 2013", "amount": 17000},
+        { "id": 4, "created_at": "Thu May 09 2013", "amount": 15000},
+        { "id": 5, "created_at": "Mon Jul 01 2013", "amount": 16000}
+    ];
+
+    var dataset = [ 5, 10, 15, 20, 25 ];
+
+
+
+    var w = 500;
+    var h = 100;
+
+    //Create SVG element
+    var svg = d3.select("body")
+            .append("svg")
+            .attr("width", 500)
+            .attr("height", 350);
+
+    var circles = svg.selectAll("circle")
+            .data(dataset)
+            .enter()
+            .append("circle");
+
+
+
+    circles.attr("cx", function(d, i) {
+        return (i * 50) + 25;
+    })
+            .attr("cy", h/2)
+            .attr("r", function(d) {
+                return d;
+            })
+            .attr("fill", "yellow")
+            .attr("stroke", "orange")
+            .attr("stroke-width", function(d) {
+                return d/2;
+            });
+
+
+    /*
+    d3.select("body")
+            .data(JSONData)
+            .enter()
+            .append("svg")
+            .attr("width", 150)
+            .attr("height", 150)
+            .append("circle")
+            .attr("cx", 25)
+            .attr("cy", 25)
+            .attr("r", 25)
+            //.style("fill", "black");
+    .style("color", function (d) {
+
+        if (i < 2) {	//Threshold of 15
+            return "red";
+        } else {
+            return "black";
+        }
+
+    });*/
+
+
+    /*
+
+        d3.select("body")//.selectAll("p")
+                .data(theData)
+                //.enter()
+                .append("svg")
+                .attr("width", 50)
+                .attr("height", 50)
+                .append("circle")
+                .style("fill", "red");
+    */
+
+
+    //var models = require('./models');
+    //app.get('/twitterData', ensureAuthenticated, function(req, res){
+        var query  = someVar.User.where({ twitter_id: req.user.twitter_id });
+        query.findOne(function (err, user) {
+            if (err) return err;
+            if (user) {
+
+                var localTrends = {};
+                var trendingHashtags = {
+                    items: []
+                };
+
+
+                var sanFrancisco = [-122.75, 36.8, -121.75, 37.8];
+                var sanDiego = [32, -117, 33, -116];
+                var newYork = [-74, 40, -73, 41];//, '-121.75', '37.8' ]
+                //var stream = T.stream('statuses/filter', { track: ['bananas', 'oranges', 'strawberries'] })
+
+                var stream = T.stream('statuses/filter', {locations: sanFrancisco, language: 'en'})
+
+                stream.on('tweet', function (tweet) {
+                    console.log(tweet.text)
+
+                })
+
+            }
+        });
+    //});
+
+
+</script>
+
+-->

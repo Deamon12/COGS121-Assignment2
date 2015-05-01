@@ -65,44 +65,5 @@ d3.json('/igMediaCounts', function(error, data) {
     .attr("x", function(d) { return scaleX(d.username); })
     .attr("width", scaleX.rangeBand())
     .attr("y", function(d) { return scaleY(d.counts.media); })
-    .attr("height", function(d) { return height - scaleY(d.counts.media); })
-      //.on("mouseover", function(){return tooltip.style("visibility", "visible");})
-      //.on("mousemove", function(){return tooltip.style("top", (event.pageY-10)+"px").style("left",(event.pageX+10)+"px");})
-      //.on("mouseout", function(){return tooltip.style("visibility", "hidden");});
-      .on("mouseover", function(d) {
-        console.log("left", (d3.event.pageX) + "px");
-        console.log("top", (d3.event.pageY - 28) + "px");
-        div.transition()
-            .duration(200)
-            .style("opacity", .9);
-        div .html(d.username+"")
-            .style("left", (d3.event.pageX) + "px")
-            .style("top", (d3.event.pageY - 28) + "px");
-      })
-      .on("mouseout", function(d) {
-        div.transition()
-            .duration(0)
-            .style("opacity", 0);
-      })
-      .on("mousemove", function(){
-        div
-            .style("left", (d3.event.pageX) + "px")
-            .style("top", (d3.event.pageY - 28) + "px");
-      });
-
+    .attr("height", function(d) { return height - scaleY(d.counts.media); });
 });
-
-var div = d3.select("body").append("div")
-    .attr("class", "tooltip")
-    .style("opacity", 0);
-
-
-
-
-var tooltip = d3.select("body")
-    .append("div")
-    .style("position", "absolute")
-    .style("z-index", "10")
-    .style("visibility", "hidden")
-    .text("a simple tooltip");
-
