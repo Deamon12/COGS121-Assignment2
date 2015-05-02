@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="fbcf33b2-61cd-4f96-ba9e-b96acc6f4f2a" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/public/css/deagan.css" afterPath="$PROJECT_DIR$/public/css/deagan.css" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/greetings.js" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/public/graph.json" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/public/js/greetings.js" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/README.md" afterPath="$PROJECT_DIR$/README.md" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="COGS121-Assignment2.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -93,6 +97,7 @@
         <option value="$PROJECT_DIR$/public/js/visualization.js" />
         <option value="$PROJECT_DIR$/public/css/visualization.css" />
         <option value="$PROJECT_DIR$/app.js" />
+        <option value="$PROJECT_DIR$/README.md" />
       </list>
     </option>
   </component>
@@ -568,7 +573,7 @@
       <workItem from="1430480120177" duration="4945000" />
       <workItem from="1430490844830" duration="7516000" />
       <workItem from="1430503126043" duration="1674000" />
-      <workItem from="1430505562670" duration="21551000" />
+      <workItem from="1430505562670" duration="21940000" />
     </task>
     <task id="LOCAL-00001" summary="Initial Commit">
       <created>1429763104447</created>
@@ -598,7 +603,7 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="169056000" />
+    <option name="totallyTimeSpent" value="169445000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -790,13 +795,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/public/graph.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.027075812">
-          <caret line="0" column="2000" selection-start-line="0" selection-start-column="2000" selection-end-line="0" selection-end-column="2000" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/package.json">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.4909091">
@@ -819,31 +817,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/README.md">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/Procfile">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/public/js/greetings.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/greetings.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.05312869">
-          <caret line="5" column="25" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="25" />
         </state>
       </provider>
     </entry>
@@ -1036,6 +1013,14 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.80206186">
           <caret line="42" column="29" selection-start-line="42" selection-start-column="16" selection-end-line="42" selection-end-column="29" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.12396694">
+          <caret line="4" column="9" selection-start-line="4" selection-start-column="9" selection-end-line="4" selection-end-column="9" />
           <folding />
         </state>
       </provider>
