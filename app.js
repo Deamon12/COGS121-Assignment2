@@ -11,7 +11,6 @@ var dotenv = require('dotenv');
 var mongoose = require('mongoose');
 var Instagram = require('instagram-node-lib');
 var async = require('async');
-var EventEmitter = require("events").EventEmitter;
 var app = express();
 
 
@@ -64,7 +63,7 @@ var T = new Twit({
 });
 
 //connect to database
-mongoose.connect(process.env.MONGODB_CONNECTION_URL);
+mongoose.connect(process.env.MONGOLAB_URI);
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function (callback) {
