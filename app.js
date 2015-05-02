@@ -393,14 +393,6 @@ app.get('/accounttwitter', ensureAuthenticated, function(req, res){
 });
 
 
-app.get('/test', ensureAuthenticated, function(req, res){
-    //console.log("test");
-    console.log(global.company); // 'Google'
-    console.log(company);
-});
-
-
-
 
 
 //children[name,
@@ -408,9 +400,6 @@ var jsonResult= {
     "name": "Trending Tweets",
     children: []
 };
-
-
-
 
 
 
@@ -451,7 +440,7 @@ app.get('/twitterData', ensureAuthenticated, function(req, res){
                         localTrends.localTrends = data[0].trends;
                     }
                     if(data.errors){
-                        console.log("Error: " + JSON.stringify(data.errors[0].message, undefined, 2));
+                        //console.log("Error: " + JSON.stringify(data.errors[0].message, undefined, 2));
                     }
                     callback(null, 'Done - local hashes: ');
                 });
@@ -466,7 +455,7 @@ app.get('/twitterData', ensureAuthenticated, function(req, res){
 
                 async.eachLimit(localTrends.localTrends, 15, function(item, callback) {
 
-                    client.get('search/tweets', {q: item.query, count:25}, function (error, data, response) {
+                    client.get('search/tweets', {q: item.query, count:98}, function (error, data, response) {
                         if (!error) {
                             data.hash = item.name;
                             localTrends.tweets.push(data);
@@ -486,7 +475,7 @@ app.get('/twitterData', ensureAuthenticated, function(req, res){
                         console.log('An item failed to process');
                     } else {
                         //console.log('All items have been processed successfully');
-                        console.log("localTrends.tweets.statuses[a]: " + JSON.stringify(localTrends.tweets.length, undefined, 2));
+                        //console.log("localTrends.tweets.statuses[a]: " + JSON.stringify(localTrends.tweets.length, undefined, 2));
                         callback(null, 'Done - Fetched Tweets:');
                     }
                 });
@@ -506,63 +495,57 @@ app.get('/twitterData', ensureAuthenticated, function(req, res){
                 async.eachLimit(localTrends.tweets, 15, function(item, callback) {
 
                     var hashTag = item.hash;
-                    console.log();
-                    //console.log("item hash: " + JSON.stringify(hashTag, undefined, 2));
+
                     //Add a new child object for each hashtag
-                    var tempObj = {
+                    var parentObject = {
                         name: {},
                         children: []
                     };
 
-                    tempObj.name = hashTag;
+                    parentObject.name = hashTag;
 
 
                     var location;
                     var creation;
                     var retweet;
-
+                    var userName;
+                    var text;
 
 
                     for(var a = 0, numItems = item.statuses.length; a < numItems; a++){
                         location = item.statuses[a].user.location;
+                        userName = item.statuses[a].user.screen_name;
                         creation = item.statuses[a].created_at;
                         retweet = item.statuses[a].retweet_count;
-
-                        var tempJson = {"name": location, "size": (Math.random() * 10)};
-
+                        text = item.statuses[a].text;
 
 
-                        if (location != "") {
-                            var anotherTemp = {
-                                children: []
-                            };
-                            anotherTemp.children.push(tempJson)
-                            tempObj.children.push(anotherTemp);
+                        if(retweet < 5 ){
+                            retweet = Math.random() * 10;
                         }
-                        else
-                            tempObj.children.push(tempJson);
+
+                        var posterInfo = {"name": userName, "size": retweet};
+
+
+
+                        var locationInfo = {
+                            name: "",
+                            children: []
+                        };
+
+                        //posterInfo.children.push(textInfo);
+                        locationInfo.children.push(posterInfo);
+                        parentObject.children.push(locationInfo);
 
 
 
 
                     }
-                    jsonResult.children.push(tempObj);
+
+                    jsonResult.children.push(parentObject);
+                    //console.log(" parentObject.children: " + JSON.stringify( parentObject, undefined, 2));
                     callback();
 
-
-                    //for (var a = 0; a < item.statuses.length; a++) {
-
-                        //console.log("item location: " + JSON.stringify(location, undefined, 2));
-                        //console.log("retweet: " + JSON.stringify(retweet, undefined, 2));
-                        //console.log("checking for : " + JSON.stringify(location, undefined, 2));
-
-                        /* for(var b = 0; a < item.statuses[a].entities.hashtags.length || a < 3; b++) {
-
-                         console.log("item: " + JSON.stringify(item.statuses[a].entities.hashtags[a].text, undefined, 2));
-
-                         }*/
-
-                    //}
 
 
                 }, function(err){
@@ -571,7 +554,7 @@ app.get('/twitterData', ensureAuthenticated, function(req, res){
                         console.log('An item failed to process');
                     } else {
                         //console.log('All items have been processed successfully');
-                        console.log("final Result: " + JSON.stringify(jsonResult, undefined, 2));
+                        //console.log("final Result: " + JSON.stringify(jsonResult, undefined, 2));
                         callback(null, 'Done - Sorting Tweets:');
                     }
                 });
@@ -720,14 +703,6 @@ function getTrendsbyLocationId(callback) {
                 if (user) {
 
 
-
-                    /*
-                     ee.on("someEvent", function () {
-                     console.log("event has occured");
-                     });
-                     */
-
-
                     var localTrends = {};
                     var trendingHashtags = {
                         items: []
@@ -766,99 +741,8 @@ function getTrendsbyLocationId(callback) {
                     stream.on('tweet', function (tweet) {
                         console.log(tweet.place.name + " : " + tweet.text);
 
-                        //ee.emit("someEvent");
-                        //return re    s.json({tweet: tweet});
-
-
                     });
 
-
-                    /**
-                     *
-                     *
-                     * { created_at: 'Thu Apr 30 01:50:27 +0000 2015',
-                id: 593593223299338200,
-                id_str: '593593223299338242',
-                text: 'Chaisin\' Tail at @theuglydogpubsd tonight!! 😺 come on down and session up with buckets of beer and… https://t.co/85BYHfLPj5',
-                     source: '<a href="http://instagram.com" rel="nofollow">Instagram</a>',
-                     truncated: false,
-                     in_reply_to_status_id: null,
-                     in_reply_to_status_id_str: null,
-                     in_reply_to_user_id: null,
-                     in_reply_to_user_id_str: null,
-                     in_reply_to_screen_name: null,
-                     user:
-                     { id: 1027143907,
-                       id_str: '1027143907',
-                       name: 'The Fat Cat Beer Co.',
-                       screen_name: 'TheFatCatBeerCo',
-                       location: 'GA, DC, VA, FL & CA',
-                       url: 'http://www.fatcatbeers.com',
-                       description: 'The Original!!! Craft Beer In A Can Since 1995! SESSION UP!™',
-                       protected: false,
-                       verified: false,
-                       followers_count: 403,
-                       friends_count: 393,
-                       listed_count: 13,
-                       favourites_count: 192,
-                       statuses_count: 629,
-                       created_at: 'Fri Dec 21 20:52:49 +0000 2012',
-                       utc_offset: -25200,
-                       time_zone: 'Arizona',
-                       geo_enabled: true,
-                       lang: 'en',
-                       contributors_enabled: false,
-                       is_translator: false,
-                       profile_background_color: '131516',
-                       profile_background_image_url: 'http://abs.twimg.com/images/themes/theme14/bg.gif',
-                       profile_background_image_url_https: 'https://abs.twimg.com/images/themes/theme14/bg.gif',
-                       profile_background_tile: true,
-                       profile_link_color: '009999',
-                       profile_sidebar_border_color: 'EEEEEE',
-                       profile_sidebar_fill_color: 'EFEFEF',
-                       profile_text_color: '333333',
-                       profile_use_background_image: true,
-                       profile_image_url: 'http://pbs.twimg.com/profile_images/444274159690858496/o5mPkbRU_normal.png',
-                       profile_image_url_https: 'https://pbs.twimg.com/profile_images/444274159690858496/o5mPkbRU_normal.png',
-                       profile_banner_url: 'https://pbs.twimg.com/profile_banners/1027143907/1418135970',
-                       default_profile: false,
-                       default_profile_image: false,
-                       following: null,
-                       follow_request_sent: null,
-                       notifications: null },
-                     geo: { type: 'Point', coordinates: [ 32.764385, -117.062255 ] },
-                     coordinates: { type: 'Point', coordinates: [ -117.062255, 32.764385 ] },
-                     place:
-                     { id: 'a592bd6ceb1319f7',
-                       url: 'https://api.twitter.com/1.1/geo/id/a592bd6ceb1319f7.json',
-                       place_type: 'city',
-                       name: 'San Diego',
-                       full_name: 'San Diego, CA',
-                       country_code: 'US',
-                       country: 'United States',
-                       bounding_box: { type: 'Polygon', coordinates: [Object] },
-                       attributes: {} },
-                     contributors: null,
-                     retweet_count: 0,
-                     favorite_count: 0,
-                     entities:
-                     { hashtags: [],
-                       trends: [],
-                       urls: [ [Object] ],
-                       user_mentions: [ [Object] ],
-                       symbols: [] },
-                     favorited: false,
-                     retweeted: false,
-                     possibly_sensitive: false,
-                     filter_level: 'low',
-                     lang: 'en',
-                     timestamp_ms: '1430358627520' }
-                     *
-                     *
-                     *
-                     *
-                     *
-                     */
 
 
                 }
@@ -1122,7 +1006,7 @@ function getTrendsbyLocationId(callback) {
         app.get('/logout', function (req, res) {
             //req.logout();
             //passport.req.logout();
-            res.redirect('/login');
+            res.redirect('/');
         });
 
         http.createServer(app).listen(app.get('port'), function () {
