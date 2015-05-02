@@ -53,15 +53,15 @@ var client = new Twitter({
     access_token_secret: TWITTER_ACCESS_SECRET
 });
 
-var Twit = require('twit');
+//var Twit = require('twit');
 
-var T = new Twit({
+/*var T = new Twit({
     consumer_key: TWITTER_CLIENT_ID,
     consumer_secret: TWITTER_CLIENT_SECRET,
     access_token: TWITTER_ACCESS_TOKEN,
     access_token_secret: TWITTER_ACCESS_SECRET
 });
-
+*/
 //connect to database
 mongoose.connect(process.env.MONGOLAB_URI);
 var db = mongoose.connection;
